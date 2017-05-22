@@ -32,6 +32,17 @@ public abstract class JedisClusterCommand<T> {
 
 	public abstract T execute(Jedis connection);
 
+	/**
+	 * 全部交由子类实现
+	 * 
+	 * @param pipeline
+	 * @param subKeys
+	 * @return
+	 */
+	public List<Object> execute(Pipeline pipeline, List<String> subKeys) {
+		throw new UnsupportedOperationException();
+	}
+
 	public T run(String key) {
 		if (key == null) {
 			throw new JedisClusterException(NO_DISPATCH_MESSAGE);
@@ -48,12 +59,29 @@ public abstract class JedisClusterCommand<T> {
 		// For multiple keys, only execute if they all share the
 		// same connection slot.
 		if (keys.length > 1) {
-			List<String> result = new ArrayList<>();
+			int slot = JedisClusterCRC16.getSlot(keys[0]);
+			for (int i = 1; i < keyCount; i++) {
+				int nextSlot = JedisClusterCRC16.getSlot(keys[i]);
+				if (slot != nextSlot) {
+					throw new JedisClusterException(
+							"No way to dispatch this command to Redis Cluster " + "because keys have different slots.");
+				}
+			}
+		}
+
+		return runWithRetries(SafeEncoder.encode(keys[0]), this.maxAttempts, false, false);
+	}
+
+	public List<String> runWithMulti(int keyCount, String... keys) {
+		List<String> result = new ArrayList<>();
+		if (keys == null || keys.length == 0) {
+			throw new JedisClusterException(NO_DISPATCH_MESSAGE);
+		}
 			Map<JedisPool, List<String>> poolKeysMap = getPoolKeyMap(Arrays.asList(keys));
 			for (Map.Entry<JedisPool, List<String>> entry : poolKeysMap.entrySet()) {
 				JedisPool pool = entry.getKey();
-				List<String> subkeys = entry.getValue();
-				if (subkeys == null || subkeys.isEmpty()) {
+				List<String> subKeys = entry.getValue();
+				if (subKeys == null || subKeys.isEmpty()) {
 					continue;
 				}
 				Jedis jedis = null;
@@ -62,10 +90,7 @@ public abstract class JedisClusterCommand<T> {
 				try {
 					jedis = pool.getResource();
 					pipeline = jedis.pipelined();
-					for (String key : subkeys) {
-						pipeline.get(key);
-					}
-					subResultList = pipeline.syncAndReturnAll();
+					subResultList = execute(pipeline, subKeys);
 				} catch (Exception e) {
 				} finally {
 					if (pipeline != null)
@@ -86,11 +111,8 @@ public abstract class JedisClusterCommand<T> {
 					}
 				}
 
-			}
-			return (T) result;
-		}
-
-		return runWithRetries(SafeEncoder.encode(keys[0]), this.maxAttempts, false, false);
+			}	
+		return result;
 	}
 
 	public T runBinary(byte[] key) {

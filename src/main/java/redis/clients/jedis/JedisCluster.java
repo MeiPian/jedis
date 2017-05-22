@@ -9,6 +9,7 @@ import redis.clients.jedis.commands.JedisClusterScriptingCommands;
 import redis.clients.jedis.commands.MultiKeyJedisClusterCommands;
 import redis.clients.util.KeyMergeUtil;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
@@ -1347,12 +1348,17 @@ public class JedisCluster extends BinaryJedisCluster
 		return new JedisClusterCommand<List<String>>(connectionHandler, maxAttempts) {
 			@Override
 			public List<String> execute(Jedis connection) {
-				// return connection.mget(keys);
 				return null;
 			}
-		}.run(keys.length, keys);
+			@Override
+			public List<Object> execute(Pipeline pipeline, java.util.List<String> subKeys) {
+				for (String key : subKeys) {
+					pipeline.get(key);
+				}
+				return pipeline.syncAndReturnAll();
+			};
+		}.runWithMulti(keys.length, keys);
 	}
-	
 
 	@Override
 	public String mset(final String... keysvalues) {

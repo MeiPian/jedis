@@ -11,6 +11,7 @@ import redis.clients.util.KeyMergeUtil;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
@@ -1350,6 +1351,7 @@ public class JedisCluster extends BinaryJedisCluster
 			public List<String> execute(Jedis connection) {
 				return null;
 			}
+
 			@Override
 			public List<Object> execute(Pipeline pipeline, java.util.List<String> subKeys) {
 				for (String key : subKeys) {
@@ -1360,20 +1362,32 @@ public class JedisCluster extends BinaryJedisCluster
 		}.runWithMulti(keys.length, keys);
 	}
 
+	
+	/**
+	 * redis 原生的 mset是原子操作。但是JedisCluster的是非原子操作。
+	 */
 	@Override
 	public String mset(final String... keysvalues) {
 		String[] keys = new String[keysvalues.length / 2];
-
+		final Map<String, String> keysvaluesMap = new HashMap<>();
 		for (int keyIdx = 0; keyIdx < keys.length; keyIdx++) {
 			keys[keyIdx] = keysvalues[keyIdx * 2];
+			keysvaluesMap.put(keys[keyIdx], keysvalues[keyIdx + 1]);
 		}
-
-		return new JedisClusterCommand<String>(connectionHandler, maxAttempts) {
+		new JedisClusterCommand<List<String>>(connectionHandler, maxAttempts) {
 			@Override
-			public String execute(Jedis connection) {
-				return connection.mset(keysvalues);
+			public List<String> execute(Jedis connection) {
+				return null;
 			}
-		}.run(keys.length, keys);
+			@Override
+			public List<Object> execute(Pipeline pipeline, java.util.List<String> subKeys) {
+				for (String key : subKeys) {
+					pipeline.set(key, keysvaluesMap.get(key));
+				}
+				return pipeline.syncAndReturnAll();
+			};
+		}.runWithMulti(keys.length, keys);
+		return "ok";
 	}
 
 	@Override

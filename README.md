@@ -8,6 +8,9 @@ Jedis was conceived to be EASY to use.
 
 Jedis is fully compatible with redis 2.8.x and 3.x.x.
 
+
+# support  multiple key  operation
+
 ## Community
 
 Meet us on IRC: ##jedis on freenode.net

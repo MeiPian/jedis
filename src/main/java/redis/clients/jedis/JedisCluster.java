@@ -1,15 +1,5 @@
 package redis.clients.jedis;
 
-import redis.clients.jedis.BinaryClient.LIST_POSITION;
-import redis.clients.jedis.params.geo.GeoRadiusParam;
-import redis.clients.jedis.params.sortedset.ZAddParams;
-import redis.clients.jedis.params.sortedset.ZIncrByParams;
-import redis.clients.jedis.commands.JedisClusterCommands;
-import redis.clients.jedis.commands.JedisClusterScriptingCommands;
-import redis.clients.jedis.commands.MultiKeyJedisClusterCommands;
-import redis.clients.util.KeyMergeUtil;
-
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -19,8 +9,16 @@ import java.util.Set;
 
 import org.apache.commons.pool2.impl.GenericObjectPoolConfig;
 
+import redis.clients.jedis.BinaryClient.LIST_POSITION;
+import redis.clients.jedis.commands.JedisClusterCommands;
+import redis.clients.jedis.commands.JedisClusterScriptingCommands;
+import redis.clients.jedis.commands.MultiKeyJedisClusterCommands;
+import redis.clients.jedis.params.geo.GeoRadiusParam;
 import redis.clients.jedis.params.set.SetParams;
+import redis.clients.jedis.params.sortedset.ZAddParams;
+import redis.clients.jedis.params.sortedset.ZIncrByParams;
 import redis.clients.util.JedisClusterHashTagUtil;
+import redis.clients.util.KeyMergeUtil;
 import redis.clients.util.SafeEncoder;
 
 public class JedisCluster extends BinaryJedisCluster
@@ -1362,7 +1360,6 @@ public class JedisCluster extends BinaryJedisCluster
 		}.runWithMulti(keys.length, keys);
 	}
 
-	
 	/**
 	 * redis 原生的 mset是原子操作。但是JedisCluster的是非原子操作。
 	 */
@@ -1387,7 +1384,7 @@ public class JedisCluster extends BinaryJedisCluster
 				return pipeline.syncAndReturnAll();
 			};
 		}.runWithMulti(keys.length, keys);
-		return "ok";
+		return "OK";
 	}
 
 	@Override
